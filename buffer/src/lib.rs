@@ -1,6 +1,11 @@
+extern crate xi_rope;
+extern crate itertools;
+extern crate eta_highlight;
+
+use eta_highlight::State as ParseState;
+use eta_highlight::{Style, Theme, SyntaxDefinition};
+
 use ::xi_rope::{Rope};
-use ::syntect::highlighting::{HighlightState, Highlighter, HighlightIterator, Style};
-use ::syntect::parsing::{ParseState, SyntaxDefinition, ScopeStack};
 
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 struct EditId(u64);
@@ -29,11 +34,10 @@ pub struct BufferView {
     /// The underlying buffer type.
     buffer: Buffer,
     null_parse_state: ParseState,
-    null_highlight_state: HighlightState,
     /// A list of (line number, parse state, highlight state) that is used to cache parsing for
     /// highlighting operations.  An edit on line "N" invalidates all caches
     /// at line > N
-    highlight_cache: Vec<(Location, ParseState, HighlightState)>,
+    _highlight_cache: Vec<(Location, ParseState)>,
 }
 
 impl Buffer {
@@ -95,13 +99,11 @@ impl Buffer {
 }
 
 impl BufferView {
-    pub fn new(buffer: Buffer, syntax_definition: &SyntaxDefinition, highlighter: &Highlighter) -> BufferView {
+    pub fn new(buffer: Buffer, syntax_definition: SyntaxDefinition, theme: Theme) -> BufferView {
         BufferView {
             buffer: buffer,
-            null_parse_state: ParseState::new(syntax_definition),
-            null_highlight_state: HighlightState::new(highlighter, ScopeStack::new()),
-            highlight_cache: vec![],
-
+            null_parse_state: ParseState::new(theme, syntax_definition),
+            _highlight_cache: vec![],
         }
     }
 
@@ -117,42 +119,27 @@ impl BufferView {
         }
     }
 
-    pub fn style_lines<'a>(&'a mut self, start: u64, end: u64, highlighter: &Highlighter) -> Vec<Vec<(Style, String)>> {
-        let mut parse_state = self.null_parse_state.clone();
-        let mut hi_state = self.null_highlight_state.clone();
-
+    pub fn style_lines<'a>(&'a mut self, start: u64, end: u64) -> Vec<Vec<(Style, String)>> {
         let mut styled_lines: Vec<Vec<(_, String)>> = vec![];
+
+        let mut parse_state = self.null_parse_state.clone();
 
         for (i, line) in self.buffer.current_rope().lines().enumerate() {
             if i >= end as usize {
                 break;
             }
-
-            let text = &*line;
-            let changes = parse_state.parse_line(text);
-            let highlight_iter = HighlightIterator::new(&mut hi_state, &changes, text, highlighter);
-            let styled = highlight_iter.map(|(a, b)| (a, b.into())).collect();
-            
             if i >= start as usize {
-                styled_lines.push(styled);
+                let highlighted = parse_state.highlight_and_advance_line(&*line);
+                styled_lines.push(highlighted.into_iter().map(|(a, s)| (a, s.to_string())).collect());
+            } else {
+                parse_state.advanced_line(&*line);
             }
         }
 
         return styled_lines;
     }
 
-    fn invalidate_line(&mut self, invalid_loc: Location) {
-        let mut truncate_pos = None;
-        for (i, &(loc, _, _)) in self.highlight_cache.iter().enumerate() {
-            if loc >= invalid_loc {
-                truncate_pos = Some(i);
-                break;
-            }
-        }
-
-        if let Some(t_pos) = truncate_pos {
-            self.highlight_cache.truncate(t_pos);
-        }
+    fn invalidate_line(&mut self, _invalid_loc: Location) {
     }
 
     fn invalidate_from_edit(&mut self, EditId(start): EditId) {

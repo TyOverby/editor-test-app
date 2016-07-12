@@ -1,0 +1,10 @@
+[package]
+name = "eta-highlight"
+version = "0.1.0"
+authors = ["Ty Overby <ty@pre-alpha.com>"]
+
+[dependencies]
+#syntect = "0.7.0"
+
+[dependencies.syntect]
+path = "../../syntect"

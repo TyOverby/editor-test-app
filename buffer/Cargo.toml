@@ -1,14 +1,11 @@
 [package]
-name = "editor-test-app"
+name = "eta-buffer"
 version = "0.1.0"
 authors = ["Ty Overby <ty@pre-alpha.com>"]
 
-[[bin]]
-name = "eta"
-path = "./src/main.rs"
-
 [dependencies]
-syntect = "0.7.0"
 xi-rope = "0.1.0"
-lux = "0.1.1"
 itertools = "0.4.16"
+
+[dependencies.eta-highlight]
+path = "../highlight"

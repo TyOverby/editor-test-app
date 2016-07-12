@@ -1,0 +1,1 @@
+paths = ["../syntect/", "../rust-onig"]
