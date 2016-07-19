@@ -8,23 +8,24 @@ use syntect::highlighting::{HighlightState, HighlightIterator, Highlighter};
 use syntect::parsing::{ParseState, ScopeStack};
 
 #[derive(Clone)]
-pub struct State {
+pub struct HiState {
     theme: Theme,
     syntax: SyntaxDefinition,
     highlight_state: HighlightState,
     parse_state: ParseState,
 }
 
-impl PartialEq for State {
-    fn eq(&self, other: &State) -> bool {
+impl PartialEq for HiState {
+    fn eq(&self, other: &HiState) -> bool {
+        self.theme.name == other.theme.name &&
         self.syntax == other.syntax &&
         self.highlight_state == other.highlight_state &&
         self.parse_state == other.parse_state
     }
 }
 
-impl State {
-    pub fn new(theme: Theme, syntax: SyntaxDefinition) -> State {
+impl HiState {
+    pub fn new(theme: Theme, syntax: SyntaxDefinition) -> HiState {
         let parse_state = ParseState::new(&syntax);
         let hi_state = {
             let highlighter = Highlighter::new(&theme);
@@ -32,7 +33,7 @@ impl State {
             hi_state
         };
 
-        State {
+        HiState {
             theme: theme,
             syntax: syntax,
             highlight_state: hi_state,
@@ -40,10 +41,8 @@ impl State {
         }
     }
 
-    pub fn with_theme(&self, theme: Theme) -> State {
-        let mut new = self.clone();
-        new.theme = theme;
-        new
+    pub fn set_theme(&mut self, theme: Theme) {
+        self.theme = theme;
     }
 
     pub fn advanced_line(&mut self, string: &str) {
@@ -54,7 +53,7 @@ impl State {
     }
 
     pub fn highlight_and_advance_line<'a>(&mut self, string: &'a str) -> Vec<(Style, &'a str)> {
-        let &mut State {ref mut theme, ref mut parse_state, ref mut highlight_state, ..} = self;
+        let &mut HiState {ref mut theme, ref mut parse_state, ref mut highlight_state, ..} = self;
 
         let operations = parse_state.parse_line(string);
 
